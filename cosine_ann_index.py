@@ -24,6 +24,10 @@ class CosineANNIndex (object):
         return [hash ^ (1 << i) for i in range(1, self.N)]
     
     def __init__(self, dims: int, N: int = 8, prefix: bytes = b'_cosann'):
+        '''Create a CosineANNIndex for a vector space with `dims` dimensions.
+        `N` is a tunable parameter that should not exceed 10 or so, as the
+        number of partitions in the vector space is proportional to 2^N. N can
+        be set higher for better precision and lower recall.'''
         self.dims = dims
         self.N = N
         self.prefix = prefix
@@ -31,16 +35,29 @@ class CosineANNIndex (object):
     
     @fdb.transactional
     def add(self, tr: fdb.Transaction, id: Any, vec: np.array):
+        '''Add an item into the index identified by `id`, with vector `vec`.'''
         hash = self._hash_function(vec)
         tr[fdb.tuple.pack((hash, id), self.prefix)] = fdb.tuple.pack(tuple(vec))
     
     @fdb.transactional
     def remove(self, tr: fdb.Transaction, id: Any):
+        '''Remove an item by its id.'''
         hash = self._hash_function(vec)
         del tr[fdb.tuple.pack((hash, id), self.prefix)]
     
     @fdb.transactional
     def query(self, tr: fdb.Transaction, id: Any, vec: np.array, desired_neighbor_count: int, recall_boost_factor=0):
+        '''Find the approximate nearest neighbors to a vector.
+        Parameters:
+          - id: the ID of the item for which to find the nearest neighbors
+          - vec: the vector for that item
+          - desired_neighbor_count: the number of neighbors to return
+          - recall_boost_factor: a positive integer that represents the number
+            of extra adjacent "neighborhoods" to search. Can slow down search
+            significantly and probably shouldn't be set higher than 1 or 2.
+        Returns: array of (neighbor id, cosine similarity) for nearby neighbors,
+        sorted by similarity descending.
+        '''
         vec_hash = self._hash_function(vec)
         startswith = lambda hash: tr.get_range_startswith(fdb.tuple.pack((hash,), self.prefix))
 
