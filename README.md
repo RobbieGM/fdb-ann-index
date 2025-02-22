@@ -26,6 +26,7 @@ index.add(tr, id=1, vec=np.array([0.1, 0.2, ..., 0.128]))
 
 ### Removing a Vector
 
+```python
 index.remove(tr, 1)
 ```
 
